@@ -1,6 +1,5 @@
 import google.generativeai as genai
 import time
-import json
 from typing import Dict, List, Optional, Any
 import logging
 
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 class GeminiClient:
     """Client for Google Gemini API with retry logic and error handling"""
     
-    def __init__(self, api_key: str, model_name: str = "gemini-1.5-flash", 
+    def __init__(self, api_key: str, model_name: str = "gemini-2.5-pro", 
                  temperature: float = 0.7, top_p: float = 0.9, max_tokens: int = 2048):
         genai.configure(api_key=api_key)
         self.model_name = model_name
@@ -17,7 +16,6 @@ class GeminiClient:
         self.top_p = top_p
         self.max_tokens = max_tokens
         
-        # Initialize the model
         generation_config = genai.types.GenerationConfig(
             temperature=temperature,
             top_p=top_p,
@@ -29,7 +27,6 @@ class GeminiClient:
             generation_config=generation_config
         )
         
-        # Safety settings
         self.safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
@@ -52,7 +49,6 @@ class GeminiClient:
         Returns:
             Generated response or None if failed
         """
-        # Format conversation for Gemini
         conversation_text = self._format_conversation(messages, system_prompt)
         
         for attempt in range(retry_count):
@@ -62,7 +58,6 @@ class GeminiClient:
                     safety_settings=self.safety_settings
                 )
                 
-                # Check if response was blocked
                 if response.candidates[0].finish_reason.name == "SAFETY":
                     logger.warning("Response blocked by safety filters")
                     return "I apologize, but I cannot provide a response to that request. Please try rephrasing your question."
@@ -94,7 +89,6 @@ class GeminiClient:
                            available_tools: List[str], tool_results: Dict = None) -> str:
         """Generate response with tool integration context"""
         
-        # Add tool context to system prompt
         tool_context = self._create_tool_context(available_tools, tool_results)
         enhanced_system_prompt = f"{system_prompt}\n\n{tool_context}"
         
@@ -133,7 +127,6 @@ class GeminiClient:
         if max_tokens is not None:
             self.max_tokens = max_tokens
         
-        # Recreate model with new parameters
         generation_config = genai.types.GenerationConfig(
             temperature=self.temperature,
             top_p=self.top_p,

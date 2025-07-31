@@ -41,7 +41,6 @@ class BudgetCalculator:
         self.margin_percentage = margin_percentage
         self.expenses: List[Expense] = []
         
-        # Default cost estimates (USD)
         self.default_costs = {
             "local_transport_day": 15,
             "taxi_per_km": 1.5,
@@ -115,10 +114,8 @@ class BudgetCalculator:
         """Estimate basic daily costs"""
         daily_cost = 0
         
-        # Transport (assuming local transport for the day)
         daily_cost += self.default_costs["local_transport_day"]
         
-        # Meals (breakfast, lunch, dinner)
         meal_cost = {
             "budget": self.default_costs["budget_meal"],
             "mid_range": self.default_costs["mid_range_meal"],
@@ -126,11 +123,9 @@ class BudgetCalculator:
         }.get(meal_preference, self.default_costs["mid_range_meal"])
         daily_cost += meal_cost * 3
         
-        # Drinks and snacks
         daily_cost += self.default_costs["coffee"] * 2
         daily_cost += self.default_costs["water_bottle"]
         
-        # Miscellaneous (souvenirs, tips, etc.)
         daily_cost += self.default_costs["souvenir"] * 0.5
         
         return daily_cost
@@ -152,7 +147,6 @@ class BudgetCalculator:
         margin_amount = total_cost * self.margin_percentage
         final_budget = total_cost + margin_amount
         
-        # Category breakdown
         category_breakdown = {}
         for category in ExpenseCategory:
             category_total = sum(
@@ -162,7 +156,6 @@ class BudgetCalculator:
             if category_total > 0:
                 category_breakdown[category.value] = category_total
         
-        # Daily breakdown
         daily_breakdown = {}
         for expense in self.expenses:
             if expense.day is not None:
@@ -170,7 +163,6 @@ class BudgetCalculator:
                     daily_breakdown[expense.day] = 0
                 daily_breakdown[expense.day] += expense.cost
         
-        # Generate recommendations
         recommendations = self._generate_recommendations(total_cost, category_breakdown)
         
         summary = BudgetSummary(
@@ -191,7 +183,6 @@ class BudgetCalculator:
         if total_cost == 0:
             return ["Add expenses to get budget recommendations"]
         
-        # Check category distribution
         if category_breakdown.get("food", 0) > total_cost * 0.4:
             recommendations.append("Food costs are high - consider local eateries or street food")
         
@@ -201,7 +192,6 @@ class BudgetCalculator:
         if category_breakdown.get("attraction", 0) < total_cost * 0.2:
             recommendations.append("Consider adding more attractions to make the most of your trip")
         
-        # Budget level recommendations
         daily_average = total_cost / max(len(set(e.day for e in self.expenses if e.day)), 1)
         
         if daily_average < 50:
@@ -211,7 +201,6 @@ class BudgetCalculator:
         else:
             recommendations.append("Mid-range budget - good balance of comfort and value")
         
-        # General tips
         recommendations.extend([
             f"Added {self.margin_percentage:.0%} buffer for unexpected expenses",
             "Keep receipts and track spending during your trip",
@@ -235,7 +224,6 @@ class BudgetCalculator:
         overage = final_budget - max_budget
         suggestions = []
         
-        # Suggest specific cuts
         category_breakdown = {}
         for category in ExpenseCategory:
             total = sum(e.cost for e in self.expenses if e.category == category)

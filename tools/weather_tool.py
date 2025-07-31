@@ -51,7 +51,6 @@ class WeatherTool:
             'limit': 1
         }
         
-        # Use the correct geocoding endpoint
         geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct"
         data = self._make_request(geocoding_url, params)
         if data and len(data) > 0:
@@ -67,7 +66,6 @@ class WeatherTool:
             'units': 'metric'
         }
         
-        # Use the correct current weather endpoint
         data = self._make_request(f"{self.base_url}/weather", params)
         if not data:
             return None
@@ -102,7 +100,6 @@ class WeatherTool:
         if not data or 'list' not in data:
             return []
         
-        # Group forecasts by date
         daily_forecasts = {}
         for item in data['list']:
             date = item['dt_txt'].split(' ')[0]
@@ -110,12 +107,10 @@ class WeatherTool:
                 daily_forecasts[date] = []
             daily_forecasts[date].append(item)
         
-        # Process daily data
         forecast_list = []
         for date_str in sorted(daily_forecasts.keys())[:days]:
             day_data = daily_forecasts[date_str]
             
-            # Calculate daily aggregates
             temps = [item['main']['temp'] for item in day_data]
             descriptions = [item['weather'][0]['description'] for item in day_data]
             humidity_vals = [item['main']['humidity'] for item in day_data]
@@ -166,7 +161,6 @@ class WeatherTool:
         """Generate weather-based travel recommendations"""
         recommendations = []
         
-        # Current weather recommendations
         if current['temperature'] < 10:
             recommendations.append("Pack warm clothing and layers")
         elif current['temperature'] > 30:
@@ -175,7 +169,6 @@ class WeatherTool:
         if current['humidity'] > 80:
             recommendations.append("High humidity - consider indoor activities during midday")
         
-        # Forecast-based recommendations
         rainy_days = sum(1 for f in forecast if f.precipitation_chance > 60)
         if rainy_days > 2:
             recommendations.append("Pack an umbrella - several rainy days expected")

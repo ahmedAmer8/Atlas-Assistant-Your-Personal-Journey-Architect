@@ -1,9 +1,7 @@
 import faiss
 import numpy as np
 import json
-import pickle
 import requests
-import time
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Optional, Tuple
 import logging
@@ -11,7 +9,6 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import os
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -71,7 +68,6 @@ class TravelVectorDB:
         """
         attractions = []
         
-        # Popular cities with coordinates
         cities = [
             {"name": "Paris", "country": "France", "lat": 48.8566, "lon": 2.3522},
             {"name": "London", "country": "UK", "lat": 51.5074, "lon": -0.1278},
@@ -88,7 +84,6 @@ class TravelVectorDB:
         categories = ["Museum", "Restaurant", "Park", "Monument", "Gallery", "Theater", 
                      "Market", "Beach", "Temple", "Castle", "Bridge", "Square"]
         
-        # Generate attractions for each city
         attractions_per_city = count // len(cities)
         
         for city in cities:
@@ -98,7 +93,6 @@ class TravelVectorDB:
             )
             attractions.extend(city_attractions)
         
-        # Fill remaining spots if needed
         while len(attractions) < count:
             city = np.random.choice(cities)
             extra_attraction = self._generate_single_attraction(
@@ -113,7 +107,6 @@ class TravelVectorDB:
         attractions = []
         
         try:
-            # Query Overpass API for tourist attractions
             overpass_url = "http://overpass-api.de/api/interpreter"
             query = f"""
             [out:json][timeout:25];
@@ -137,7 +130,6 @@ class TravelVectorDB:
                         tags = element['tags']
                         name = tags.get('name', f"Attraction in {city}")
                         
-                        # Get coordinates
                         if 'lat' in element and 'lon' in element:
                             attraction_lat = element['lat']
                             attraction_lon = element['lon']
@@ -156,14 +148,12 @@ class TravelVectorDB:
                         if len(attractions) >= count:
                             break
             
-            # Fill remaining spots with generated data
             while len(attractions) < count:
                 attraction = self._generate_single_attraction(city, country, lat, lon)
                 attractions.append(attraction)
                 
         except Exception as e:
             logger.warning(f"API call failed for {city}, generating mock data: {e}")
-            # Generate mock data if API fails
             for i in range(count):
                 attraction = self._generate_single_attraction(city, country, lat, lon)
                 attractions.append(attraction)
@@ -174,7 +164,6 @@ class TravelVectorDB:
                                    lat: float, lon: float, idx: int) -> Attraction:
         """Create attraction from OpenStreetMap data"""
         
-        # Determine category
         tourism_type = tags.get('tourism', 'attraction')
         category_map = {
             'museum': 'Museum',
@@ -187,10 +176,8 @@ class TravelVectorDB:
         }
         category = category_map.get(tourism_type, 'Attraction')
         
-        # Generate description based on category and tags
         description = self._generate_description(name, category, tags, city)
         
-        # Generate realistic costs based on category
         cost_ranges = {
             'Museum': (8, 25),
             'Gallery': (5, 20),
@@ -230,7 +217,6 @@ class TravelVectorDB:
                      "Market", "Beach", "Temple", "Castle", "Bridge", "Square"]
         category = np.random.choice(categories)
         
-        # Generate names based on category and city
         name_templates = {
             "Museum": [f"{city} National Museum", f"Museum of {city} History", f"{city} Art Museum"],
             "Restaurant": [f"Cafe {city}", f"{city} Bistro", f"Traditional {city} Kitchen"],
@@ -248,10 +234,8 @@ class TravelVectorDB:
         
         name = np.random.choice(name_templates.get(category, [f"{category} in {city}"]))
         
-        # Generate description
         description = self._generate_description(name, category, {}, city)
         
-        # Generate realistic costs
         cost_ranges = {
             "Museum": (8, 25), "Restaurant": (15, 50), "Park": (0, 10),
             "Monument": (0, 15), "Gallery": (5, 20), "Theater": (20, 80),
@@ -261,7 +245,6 @@ class TravelVectorDB:
         min_cost, max_cost = cost_ranges.get(category, (0, 20))
         avg_cost = np.random.uniform(min_cost, max_cost)
         
-        # Random location within city bounds
         lat = base_lat + np.random.uniform(-0.1, 0.1)
         lon = base_lon + np.random.uniform(-0.1, 0.1)
         
@@ -380,17 +363,13 @@ class TravelVectorDB:
         """
         logger.info(f"Adding {len(attractions)} attractions to the database...")
         
-        # Generate embeddings for descriptions
         descriptions = [attr.description for attr in attractions]
         embeddings = self.model.encode(descriptions)
         
-        # Normalize for cosine similarity
         faiss.normalize_L2(embeddings)
         
-        # Add to Faiss index
         self.index.add(embeddings.astype('float32'))
         
-        # Update internal storage
         start_idx = len(self.attractions)
         for i, attraction in enumerate(attractions):
             self.attractions.append(attraction)
@@ -416,21 +395,18 @@ class TravelVectorDB:
         if len(self.attractions) == 0:
             return []
         
-        # Generate query embedding
         query_embedding = self.model.encode([query])
         faiss.normalize_L2(query_embedding)
         
-        # Search in Faiss index
         scores, indices = self.index.search(query_embedding.astype('float32'), len(self.attractions))
         
         results = []
         for score, idx in zip(scores[0], indices[0]):
-            if idx == -1:  # Faiss returns -1 for invalid indices
+            if idx == -1:  
                 continue
                 
             attraction = self.attractions[idx]
             
-            # Apply filters
             if category_filter and attraction.category.lower() != category_filter.lower():
                 continue
             if city_filter and attraction.city.lower() != city_filter.lower():
@@ -480,10 +456,8 @@ class TravelVectorDB:
             'dimension': self.dimension
         }
         
-        # Save Faiss index
         faiss.write_index(self.index, f"{filepath}.faiss")
         
-        # Save metadata
         with open(f"{filepath}.json", 'w') as f:
             json.dump(data, f, indent=2)
         
@@ -491,14 +465,11 @@ class TravelVectorDB:
     
     def load_database(self, filepath: str) -> None:
         """Load database from disk"""
-        # Load Faiss index
         self.index = faiss.read_index(f"{filepath}.faiss")
         
-        # Load metadata
         with open(f"{filepath}.json", 'r') as f:
             data = json.load(f)
         
-        # Reconstruct attractions
         self.attractions = [Attraction(**attr_data) for attr_data in data['attractions']]
         self.id_to_idx = data['id_to_idx']
         self.dimension = data['dimension']
@@ -525,7 +496,6 @@ class TravelVectorDB:
             "category_list": sorted(list(categories))
         }
 
-# Example usage and integration class
 class PlaceFinder:
     """
     High-level interface for the travel recommendation system
@@ -598,10 +568,8 @@ class PlaceFinder:
 
 # Example usage
 if __name__ == "__main__":
-    # Initialize the PlaceFinder
     place_finder = PlaceFinder("travel_attractions_db")
     
-    # Example searches
     print("=== Museum Search ===")
     museums = place_finder.find_places("museums with ancient artifacts", limit=5)
     for museum in museums:

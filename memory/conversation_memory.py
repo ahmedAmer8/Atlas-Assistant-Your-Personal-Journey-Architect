@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Message:
     """Individual conversation message"""
-    role: str  # 'user' or 'assistant'
+    role: str  
     content: str
     timestamp: str
     metadata: Optional[Dict] = None
@@ -48,11 +48,9 @@ class ConversationMemory:
         
         self.messages.append(message)
         
-        # Maintain history limit
         if len(self.messages) > self.max_history:
             self._truncate_history()
         
-        # Extract preferences from user messages
         if role == "user":
             self._extract_preferences(content)
         
@@ -63,16 +61,13 @@ class ConversationMemory:
         if len(self.messages) <= self.max_history:
             return
         
-        # Keep the most recent messages
         recent_messages = self.messages[-self.max_history:]
         
-        # Try to preserve important context
         important_messages = []
         for msg in self.messages[:-self.max_history]:
             if self._is_important_message(msg):
                 important_messages.append(msg)
         
-        # Combine important + recent, respecting limit
         if important_messages:
             available_slots = self.max_history - len(recent_messages)
             important_messages = important_messages[-available_slots:] if available_slots > 0 else []
@@ -109,7 +104,6 @@ class ConversationMemory:
         
         user_input_lower = user_input.lower()
         
-        # Extract interests
         interest_keywords = {
             "history": ["history", "historical", "ancient", "heritage"],
             "art": ["art", "gallery", "museum", "painting", "sculpture"],
@@ -126,7 +120,6 @@ class ConversationMemory:
                 if interest not in self.user_preferences.interests:
                     self.user_preferences.interests.append(interest)
         
-        # Extract budget information
         if "budget" in user_input_lower:
             budget_numbers = self._extract_numbers(user_input)
             if budget_numbers:
@@ -135,19 +128,16 @@ class ConversationMemory:
                 elif len(budget_numbers) >= 2:
                     self.user_preferences.budget_range = (budget_numbers[0], budget_numbers[1])
         
-        # Extract dietary restrictions
         dietary_keywords = ["vegetarian", "vegan", "halal", "kosher", "gluten-free", "allergic"]
         for keyword in dietary_keywords:
             if keyword in user_input_lower and keyword not in self.user_preferences.dietary_restrictions:
                 self.user_preferences.dietary_restrictions.append(keyword)
         
-        # Extract travel style
         if any(word in user_input_lower for word in ["luxury", "high-end", "premium"]):
             self.user_preferences.travel_style = "luxury"
         elif any(word in user_input_lower for word in ["budget", "cheap", "backpack", "hostel"]):
             self.user_preferences.travel_style = "budget"
         
-        # Extract group size
         group_indicators = ["traveling with", "group of", "family of", "couple", "solo"]
         for indicator in group_indicators:
             if indicator in user_input_lower:

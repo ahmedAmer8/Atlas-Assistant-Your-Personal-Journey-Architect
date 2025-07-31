@@ -21,7 +21,6 @@ class AtlasAgent:
     """
     
     def __init__(self):
-        # Initialize components
         self.llm = GeminiClient(
             api_key=config.GEMINI_API_KEY,
             model_name=config.GEMINI_MODEL,
@@ -46,37 +45,37 @@ class AtlasAgent:
             max_history=config.CONVERSATION_HISTORY_LIMIT
         )
         
-        # System prompt for the travel architect persona
         self.system_prompt = """You are Atlas, a knowledgeable and friendly Travel Architect. Your role is to help users plan amazing travel experiences by combining practical information with inspiring suggestions.
 
-PERSONALITY:
-- Friendly and engaging, never using slang
-- Balanced between inspiration and practicality
-- Concise yet comprehensive
-- Culturally aware and respectful
-- Responds in the user's detected language (Arabic or English)
+                                PERSONALITY:
+                                - Friendly and engaging, never using slang
+                                - Balanced between inspiration and practicality
+                                - Concise yet comprehensive
+                                - Culturally aware and respectful
+                                - Responds in the user's detected language (Arabic or English)
 
-CAPABILITIES:
-- Access real-time weather forecasts
-- Search for attractions and places of interest
-- Calculate detailed budgets and costs
-- Remember user preferences throughout conversation
-- Create day-by-day itineraries
+                                CAPABILITIES:
+                                - Access real-time weather forecasts
+                                - Search for attractions and places of interest
+                                - Calculate detailed budgets and costs
+                                - Remember user preferences throughout conversation
+                                - Create day-by-day itineraries
 
-RESPONSE FORMAT:
-- Use clear headings for itineraries (Day 1 - Morning/Afternoon/Evening)
-- Bullet-point activities with time estimates and costs
-- End with budget summary and weather snapshot
-- Stay factual about prices and weather
+                                RESPONSE FORMAT:
+                                - Use clear headings for itineraries (Day 1 - Morning/Afternoon/Evening)
+                                - Bullet-point activities with time estimates and costs
+                                - End with budget summary and weather snapshot
+                                - Stay factual about prices and weather
 
-CONSTRAINTS:
-- Never book anything - only suggest and recommend
-- If data is missing, ask clarifying questions
-- If tools fail, offer alternatives
-- Be upfront about limitations
-- Always consider user's stated preferences and budget
+                                CONSTRAINTS:
+                                - Never book anything - only suggest and recommend
+                                - If data is missing, ask clarifying questions
+                                - If tools fail, offer alternatives
+                                - Be upfront about limitations
+                                - Always consider user's stated preferences and budget
 
-Remember: You're helping create memorable journeys, not just listing attractions."""
+                                Remember: You're helping create memorable journeys, not just listing attractions.
+        """
 
         logger.info("Atlas Agent initialized successfully")
     
@@ -91,21 +90,16 @@ Remember: You're helping create memorable journeys, not just listing attractions
             Agent's response
         """
         try:
-            # Add user message to memory
             self.memory.add_message("user", user_input)
             
-            # Analyze user intent and determine needed tools
             tool_needs = self._analyze_intent(user_input)
             
-            # Execute tools if needed
             tool_results = {}
             if tool_needs:
                 tool_results = self._execute_tools(tool_needs, user_input)
             
-            # Generate response using LLM
             response = self._generate_response(tool_results)
             
-            # Add assistant response to memory
             self.memory.add_message("assistant", response)
             
             return {
@@ -130,26 +124,21 @@ Remember: You're helping create memorable journeys, not just listing attractions
         
         user_lower = user_input.lower()
         
-        # Check for weather needs
         weather_keywords = ["weather", "temperature", "rain", "sunny", "climate", "forecast"]
         if any(keyword in user_lower for keyword in weather_keywords):
             intent["needs_weather"] = True
         
-        # Check for place/attraction needs
         place_keywords = ["attractions", "places", "visit", "see", "museum", "restaurant", 
                          "activities", "things to do", "sightseeing", "recommend"]
         if any(keyword in user_lower for keyword in place_keywords):
             intent["needs_places"] = True
         
-        # Check for budget needs
         budget_keywords = ["budget", "cost", "price", "expensive", "cheap", "afford", "money"]
         if any(keyword in user_lower for keyword in budget_keywords):
             intent["needs_budget"] = True
         
-        # Extract destination
         intent["destination"] = self._extract_destination(user_input)
         
-        # If user is asking for itinerary or planning, enable all tools
         planning_keywords = ["itinerary", "plan", "trip", "travel", "schedule", "agenda"]
         if any(keyword in user_lower for keyword in planning_keywords):
             intent["needs_weather"] = True
@@ -160,10 +149,8 @@ Remember: You're helping create memorable journeys, not just listing attractions
     
     def _extract_destination(self, user_input: str) -> Optional[str]:
         """Extract destination from user input"""
-        # Simple destination extraction - could be enhanced with NER
         user_lower = user_input.lower()
         
-        # Common destination patterns
         destination_patterns = [
             "to ", "in ", "visit ", "going to ", "traveling to ",
             "trip to ", "vacation in ", "holiday in "
@@ -174,14 +161,12 @@ Remember: You're helping create memorable journeys, not just listing attractions
                 start_idx = user_lower.find(pattern) + len(pattern)
                 remaining_text = user_input[start_idx:].strip()
                 
-                # Extract the next few words as potential destination
                 words = remaining_text.split()[:3]  # Take up to 3 words
                 destination = " ".join(words).rstrip('.,!?')
                 
                 if len(destination) > 2:
                     return destination.title()
         
-        # Check session context for current destination
         current_dest = self.memory.get_session_context("current_destination")
         if current_dest:
             return current_dest
@@ -193,11 +178,9 @@ Remember: You're helping create memorable journeys, not just listing attractions
         results = {}
         destination = tool_needs.get("destination")
         
-        # Update session context with destination
         if destination:
             self.memory.update_session_context("current_destination", destination)
         
-        # Execute weather tool
         if tool_needs["needs_weather"] and destination:
             logger.info(f"Fetching weather for {destination}")
             weather_data = self.weather_tool.get_weather_summary(
@@ -205,11 +188,9 @@ Remember: You're helping create memorable journeys, not just listing attractions
             )
             results["weather"] = weather_data
         
-        # Execute place finder
         if tool_needs["needs_places"]:
             logger.info("Searching for places and attractions")
             
-            # Build search query from user preferences and input
             search_query = self._build_place_search_query(user_input)
             
             places = self.place_finder.find_places(
@@ -220,24 +201,19 @@ Remember: You're helping create memorable journeys, not just listing attractions
             results["places"] = places
             
         
-        # Execute budget calculations
         if tool_needs["needs_budget"] or results.get("places"):
             logger.info("Calculating budget estimates")
             
-            # Reset budget calculator for new calculation
             self.budget_calculator.reset()
             
-            # Add estimated daily costs
             user_prefs = self.memory.get_user_preferences()
             travel_style = "mid_range"
             if user_prefs:
                 travel_style = user_prefs.get("travel_style", "mid_range")
             
-            # Add attraction costs if available
             if results.get("places"):
                 self.budget_calculator.add_attraction_costs(results["places"][:5])  # Top 5 attractions
             
-            # Estimate meals and transport for a day
             self.budget_calculator.add_meal_costs(travel_style, 3)  # 3 meals
             self.budget_calculator.add_transport_cost("local_transport", 1)
             
@@ -248,14 +224,11 @@ Remember: You're helping create memorable journeys, not just listing attractions
     
     def _build_place_search_query(self, user_input: str) -> str:
         """Build search query for place finder"""
-        # Get user preferences
         user_prefs = self.memory.get_user_preferences()
         query_parts = []
         
-        # Add user's current input
         query_parts.append(user_input)
         
-        # Add known interests
         if user_prefs and user_prefs.get("interests"):
             query_parts.extend(user_prefs["interests"])
         
@@ -263,14 +236,11 @@ Remember: You're helping create memorable journeys, not just listing attractions
     
     def _generate_response(self, tool_results: Dict[str, Any]) -> str:
         """Generate response using LLM with tool results"""
-        # Get conversation history
         conversation = self.memory.get_conversation_history()
         
-        # Add context summary
         context_summary = self.memory.get_context_summary()
         enhanced_prompt = f"{self.system_prompt}\n\nUSER CONTEXT: {context_summary}"
         
-        # Add tool results to context
         available_tools = list(tool_results.keys()) if tool_results else []
         
         response = self.llm.generate_with_tools(

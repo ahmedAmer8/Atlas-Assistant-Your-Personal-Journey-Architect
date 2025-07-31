@@ -1,7 +1,6 @@
 import streamlit as st
 import logging
 from datetime import datetime
-import json
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -10,11 +9,9 @@ from typing import Dict, List
 from agents.atlas_agent import AtlasAgent
 from config import config
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Page configuration
 st.set_page_config(
     page_title="Atlas Assistant - Your Personal Journey Architect",
     page_icon="🗺️",
@@ -22,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+
 st.markdown("""
 <style>
     .main-header {
@@ -85,7 +82,6 @@ class AtlasUI:
     def render_sidebar(self):
         """Render sidebar with controls and information"""
         with st.sidebar:
-            # Create a simple Atlas logo using emoji or text
             st.markdown("""
             <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1f4e79, #2196f3); border-radius: 10px; margin-bottom: 20px;">
                 <h1 style="color: white; margin: 0; font-size: 2em;">🗺️ ATLAS</h1>
@@ -95,7 +91,6 @@ class AtlasUI:
             
             st.markdown("---")
             
-            # Agent Controls
             st.subheader("🎛️ Controls")
             
             creativity_level = st.selectbox(
@@ -117,12 +112,11 @@ class AtlasUI:
             
             st.markdown("---")
             
-            # Statistics
             self.render_stats_sidebar()
             
             st.markdown("---")
             
-            # Help
+            
             st.subheader("💡 Tips")
             st.markdown("""
             **Try asking:**
@@ -148,7 +142,6 @@ class AtlasUI:
                 attractions_count = stats.get("place_finder_stats", {}).get("total_attractions", 0)
                 st.metric("Attractions", attractions_count)
             
-            # User preferences
             user_prefs = stats.get("user_preferences")
             if user_prefs:
                 st.subheader("👤 Your Preferences")
@@ -168,19 +161,15 @@ class AtlasUI:
     
     def render_main_interface(self):
         """Render main chat interface"""
-        # Header
         st.markdown('<h1 class="main-header">🗺️ Atlas Assistant</h1>', unsafe_allow_html=True)
         st.markdown("*Your Personal Journey Architect - Planning adventures with AI precision*")
         
-        # Chat container
         chat_container = st.container()
         
-        # Display chat history
         with chat_container:
             for message in st.session_state.chat_history:
                 self.render_chat_message(message)
         
-        # Chat input
         with st.container():
             col1, col2 = st.columns([6, 1])
             
@@ -194,7 +183,6 @@ class AtlasUI:
                 if st.button("🎯", help="Quick examples", use_container_width=True):
                     self.show_quick_examples()
         
-        # Process user input
         if user_input:
             self.process_user_input(user_input)
     
@@ -207,7 +195,6 @@ class AtlasUI:
             with st.chat_message("assistant"):
                 st.markdown(message["content"])
                 
-                # Add tool results if available
                 if "metadata" in message and message["metadata"]:
                     self.render_tool_results(message["metadata"])
     
@@ -234,7 +221,6 @@ class AtlasUI:
         current = weather_data.get("current", {})
         forecast = weather_data.get("forecast", [])
         
-        # Current weather
         if current:
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -246,7 +232,6 @@ class AtlasUI:
             
             st.write(f"**Condition:** {current['description']}")
         
-        # Forecast chart
         if forecast:
             df = pd.DataFrame(forecast)
             fig = px.line(df, x='date', y=['high', 'low'], 
@@ -260,10 +245,8 @@ class AtlasUI:
             st.info("No attractions found.")
             return
         
-        # Create DataFrame for display
         df = pd.DataFrame(places_data)
         
-        # Display as cards
         for i, place in enumerate(places_data[:5]):  # Show top 5
             with st.container():
                 col1, col2, col3 = st.columns([2, 1, 1])
@@ -291,7 +274,6 @@ class AtlasUI:
             final_budget = budget_data.get('final_budget', 0)
             margin = budget_data.get('margin_amount', 0)
             
-            # Summary metrics
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Base Cost", f"${total_cost:.2f}")
@@ -300,7 +282,6 @@ class AtlasUI:
             with col3:
                 st.metric("Safety Buffer", f"${margin:.2f}")
             
-            # Breakdown
             breakdown = budget_data.get('breakdown', {})
             if breakdown:
                 st.subheader("Cost Breakdown")
@@ -324,19 +305,16 @@ class AtlasUI:
     
     def process_user_input(self, user_input: str):
         """Process user input and get agent response"""
-        # Add user message to history
         st.session_state.chat_history.append({
             "role": "user", 
             "content": user_input,
             "timestamp": datetime.now()
         })
         
-        # Get agent response
         with st.spinner("Atlas is thinking..."):
             try:
                 response = self.agent.process_message(user_input)
                 
-                # Add assistant response to history
                 st.session_state.chat_history.append({
                     "role": "assistant",
                     "content": response.get("content", ""),
@@ -344,7 +322,6 @@ class AtlasUI:
                     "timestamp": datetime.now()
                 })
                 
-                # Rerun to show new messages
                 st.rerun()
                 
             except Exception as e:
