@@ -1,0 +1,3 @@
+fix the image of atlas in the ui
+fix the weather (Today + 7‐day summary) and budget (Sum activities + transport + margin) tools
+check all the requirements again
